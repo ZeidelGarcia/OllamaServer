@@ -1,1 +1,49 @@
 
+name: Build Release APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Download Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-version: '8.4'
+
+    - name: Restore Keystore
+      run: |
+        echo ${{ secrets.KEYSTORE_BASE64 }} | base64 --decode > ollama-release.keystore
+
+    - name: Set environment variables
+      run: |
+        echo "KEYSTORE_FILE=ollama-release.keystore" >> $GITHUB_ENV
+        echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+        echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+        echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+
+    - name: Build Release APK
+      run: ./gradlew assembleRelease -Pandroid.injected.signing.store.file=$KEYSTORE_FILE \
+                                      -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+                                      -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+                                      -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: Ollama-Server-apk
+        path: app/build/outputs/apk/release/app-release.apk
