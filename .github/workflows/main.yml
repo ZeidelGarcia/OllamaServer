@@ -22,60 +22,107 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # 3️⃣ Instalar Gradle (SOLUCIÓN SIMPLE)
-    - name: Install Gradle
+    # 3️⃣ Verificar si existe Gradle Wrapper
+    - name: Check Gradle Wrapper
       run: |
-        sudo apt-get update
-        sudo apt-get install -y gradle
-        gradle --version
-
-    # 4️⃣ Restaurar keystore desde secreto
-    - name: Restore Keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ollama-release.keystore
-        if [ -f "ollama-release.keystore" ]; then
-          echo "✅ Keystore creado exitosamente"
-          ls -la ollama-release.keystore
+        if [ ! -f "./gradlew" ]; then
+          echo "❌ ERROR: No se encontró gradlew. Generándolo..."
+          # Esto generará el wrapper automáticamente
+          wget https://raw.githubusercontent.com/gradle/gradle/master/gradlew
+          chmod +x ./gradlew
+          mkdir -p gradle/wrapper
+          wget -O gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar
+          cat > gradle/wrapper/gradle-wrapper.properties << EOL
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+EOL
+          echo "✅ Gradle Wrapper generado automáticamente"
         else
-          echo "❌ ERROR: No se pudo crear el keystore"
-          exit 1
+          echo "✅ Gradle Wrapper encontrado"
+          chmod +x ./gradlew
         fi
 
-    # 5️⃣ Configurar variables de entorno
+    # 4️⃣ Cache de Gradle
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    # 5️⃣ Restaurar keystore desde secreto
+    - name: Restore Keystore
+      run: |
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ollama-release.keystore
+          if [ -f "ollama-release.keystore" ]; then
+            echo "✅ Keystore creado exitosamente"
+            ls -la ollama-release.keystore
+          else
+            echo "❌ ERROR: No se pudo crear el keystore"
+            exit 1
+          fi
+        else
+          echo "⚠️  No hay keystore configurado. Generando uno temporal..."
+          # Generar keystore temporal para testing
+          keytool -genkey -v -keystore temp.keystore -alias androidkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
+          echo "✅ Keystore temporal generado para testing"
+        fi
+
+    # 6️⃣ Configurar variables de entorno
     - name: Set environment variables
       run: |
-        echo "KEYSTORE_FILE=$PWD/ollama-release.keystore" >> $GITHUB_ENV
-        echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-        echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-        echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+        if [ -f "ollama-release.keystore" ]; then
+          echo "KEYSTORE_FILE=$PWD/ollama-release.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD || 'android' }}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS || 'androidkey' }}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD || 'android' }}" >> $GITHUB_ENV
+        else
+          echo "KEYSTORE_FILE=$PWD/temp.keystore" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_ALIAS=androidkey" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+        fi
+        echo "Variables configuradas:"
+        echo "KEYSTORE_FILE: $KEYSTORE_FILE"
+        echo "KEY_ALIAS: $KEY_ALIAS"
 
-    # 6️⃣ Construir APK de release USANDO GRADLE INSTALADO
+    # 7️⃣ Construir APK
     - name: Build Release APK
       run: | 
         cd app/
-          gradle assembleRelease \
-          --scan \
+        ./../gradlew assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
           -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
-    # 7️⃣ Verificar APK generado
+    # 8️⃣ Verificar APK
     - name: Verify APK was built
       run: |
         APK_PATH="app/build/outputs/apk/release/app-release.apk"
         if [ -f "$APK_PATH" ]; then
-          echo "✅ APK creado exitosamente"
+          echo "✅ APK creado exitosamente!"
+          echo "📦 Tamaño: $(du -h "$APK_PATH" | cut -f1)"
+          echo "📋 Contenido del directorio:"
           ls -la app/build/outputs/apk/release/
         else
-          echo "❌ No se encontró el APK. Buscando en todo el proyecto:"
+          echo "❌ No se encontró el APK. Buscando..."
           find . -name "*.apk" -type f
+          echo "Estructura de directorios:"
+          find . -name "build" -type d | head -10
           exit 1
         fi
 
-    # 8️⃣ Subir APK como artefacto
+    # 9️⃣ Subir APK como artefacto
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: Ollama-Server
+        name: Ollama-Server-APK
         path: app/build/outputs/apk/release/*.apk
