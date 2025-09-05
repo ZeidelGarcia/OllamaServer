@@ -7,6 +7,13 @@ android {
     namespace "com.ollamaserver"
     compileSdk 34
 
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            // outputFileName = "Ollama-Server-${variant.versionName}-${variant.name}.apk"
+            outputFileName = "Ollama-Server.apk"
+        }
+    }
+    
     defaultConfig {
         applicationId "com.ollamaserver"
         minSdk 21
