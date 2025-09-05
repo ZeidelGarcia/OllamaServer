@@ -39,13 +39,13 @@ jobs:
             wget -O gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar
 
             # Crear gradle-wrapper.properties
-            cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+            cat > gradle/wrapper/gradle-wrapper.properties <<- 'EOF'
             distributionBase=GRADLE_USER_HOME
             distributionPath=wrapper/dists
             distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
             zipStoreBase=GRADLE_USER_HOME
-            zipStorePath=wrapper/dists
-            EOF
+            zipStorePath=wrapper/dists 
+          EOF
 
             echo "✅ Gradle Wrapper generado automáticamente"
           else
