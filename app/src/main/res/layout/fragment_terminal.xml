@@ -1,0 +1,10 @@
+<TextView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/terminalText"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:scrollbars="vertical|horizontal"
+    android:background="#000000"
+    android:textColor="#00FF00"
+    android:fontFamily="monospace"
+    android:textSize="12sp"/>
