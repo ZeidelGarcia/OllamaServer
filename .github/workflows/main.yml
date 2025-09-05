@@ -22,14 +22,11 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-  # En lugar de instalar Gradle antiguo, instala una versión moderna
-    - name: Install Modern Gradle
+    # 3️⃣ Instalar Gradle (SOLUCIÓN SIMPLE)
+    - name: Install Gradle
       run: |
-        # Instalar Gradle 8.x (compatible con Android)
-        wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
-        sudo unzip -d /opt/gradle gradle-8.7-bin.zip
-        echo "GRADLE_HOME=/opt/gradle/gradle-8.7" >> $GITHUB_ENV
-        echo "$/opt/gradle/gradle-8.7/bin:$PATH" >> $GITHUB_ENV
+        sudo apt-get update
+        sudo apt-get install -y gradle
         gradle --version
 
     # 4️⃣ Restaurar keystore desde secreto
@@ -56,7 +53,7 @@ jobs:
     - name: Build Release APK
       run: | 
         cd app/
-          ./gradle assembleRelease \
+          gradle assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
