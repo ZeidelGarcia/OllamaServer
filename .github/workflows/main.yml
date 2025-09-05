@@ -92,7 +92,7 @@ jobs:
       # 7️⃣ Construir APK
       - name: Build Release APK
         run: |
-          ./gradlew assembleRelease --debug \
+          ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
@@ -101,7 +101,7 @@ jobs:
       # 8️⃣ Verificar APK
       - name: Verify APK was built
         run: |
-          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          APK_PATH="app/build/outputs/apk/release/Ollama-Server.apk"
           if [ -f "$APK_PATH" ]; then
             echo "✅ APK creado exitosamente!"
             echo "📦 Tamaño: $(du -h "$APK_PATH" | cut -f1)"
@@ -119,5 +119,5 @@ jobs:
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ollama-Server-APK
+          name: Ollama-Server
           path: app/build/outputs/apk/release/*.apk
