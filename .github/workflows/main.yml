@@ -20,6 +20,7 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+        cache: 'gradle'  # 🔥 Agregar cache de Gradle
 
     # 3️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
@@ -56,7 +57,7 @@ jobs:
         echo "✅ gradlew listo"
         ./gradlew --version
 
-    # 6️⃣ Construir APK de release
+    # 6️⃣ Construir APK de release (USANDO EL GRADLEW LOCAL)
     - name: Build Release APK
       run: |
         ./gradlew assembleRelease \
@@ -68,7 +69,7 @@ jobs:
     # 7️⃣ Verificar APK generado
     - name: Verify APK was built
       run: |
-        APK_PATH="app/build/outputs/apk/release/OllamaServer.apk"
+        APK_PATH="app/build/outputs/apk/release/app-release.apk"
         if [ -f "$APK_PATH" ]; then
           echo "✅ APK creado exitosamente"
           ls -la app/build/outputs/apk/release/
