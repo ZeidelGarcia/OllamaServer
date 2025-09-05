@@ -1,0 +1,9 @@
+// build.gradle (raíz)
+
+plugins {
+    // vacío; no poner com.android.application aquí
+}
+
+tasks.register("clean", Delete) {
+    delete(rootProject.buildDir)
+}
