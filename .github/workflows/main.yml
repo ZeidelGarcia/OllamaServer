@@ -92,8 +92,7 @@ jobs:
       # 7️⃣ Construir APK
       - name: Build Release APK
         run: |
-          cd app/
-          ./../gradlew assembleRelease \
+          ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
