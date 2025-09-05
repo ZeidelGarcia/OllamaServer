@@ -53,7 +53,7 @@ jobs:
     - name: Build Release APK
       run: | 
         cd app/
-          ../gradle assembleRelease \
+          ./build.gradle assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
