@@ -13,6 +13,8 @@ jobs:
     # 1️⃣ Clonar el repositorio
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 🔥 Clona todo el historial, necesario para gradle wrapper
 
     # 2️⃣ Configurar JDK 17
     - name: Setup JDK
@@ -20,9 +22,26 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
-        cache: 'gradle'  # 🔥 Agregar cache de Gradle
+        cache: 'gradle'
 
-    # 3️⃣ Restaurar keystore desde secreto
+    # 3️⃣ Generar gradlew si no existe
+    - name: Generate Gradle Wrapper
+      run: |
+        if [ ! -f "./gradlew" ]; then
+          echo "📦 Generando gradlew..."
+          ./gradle wrapper --gradle-version=8.4 --distribution-type=bin
+          # Si no hay gradle instalado, usamos una alternativa
+          if [ ! -f "./gradlew" ]; then
+            gradle wrapper --gradle-version=8.4 --distribution-type=bin
+          fi
+        fi
+        
+        # Asegurar que gradlew tenga permisos de ejecución
+        chmod +x ./gradlew
+        echo "✅ gradlew listo"
+        ls -la gradlew
+
+    # 4️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ollama-release.keystore
@@ -34,7 +53,7 @@ jobs:
           exit 1
         fi
 
-    # 4️⃣ Configurar variables de entorno
+    # 5️⃣ Configurar variables de entorno
     - name: Set environment variables
       run: |
         echo "KEYSTORE_FILE=$PWD/ollama-release.keystore" >> $GITHUB_ENV
@@ -42,22 +61,17 @@ jobs:
         echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
         echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-    # 5️⃣ Preparar gradlew: permisos + line endings
+    # 6️⃣ Preparar gradlew (ahora seguro que existe)
     - name: Prepare gradlew
       run: |
-        if [ ! -f "./gradlew" ]; then
-          echo "❌ gradlew no encontrado en la raíz del repo"
-          ls -la
-          exit 1
-        fi
         chmod +x ./gradlew
         # Convertir a line endings LF (Linux)
         sudo apt-get update && sudo apt-get install -y dos2unix
         dos2unix ./gradlew
-        echo "✅ gradlew listo"
+        echo "✅ gradlew preparado"
         ./gradlew --version
 
-    # 6️⃣ Construir APK de release (USANDO EL GRADLEW LOCAL)
+    # 7️⃣ Construir APK de release
     - name: Build Release APK
       run: |
         ./gradlew assembleRelease \
@@ -66,20 +80,21 @@ jobs:
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
           -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
-    # 7️⃣ Verificar APK generado
+    # 8️⃣ Verificar APK generado
     - name: Verify APK was built
       run: |
-        APK_PATH="app/build/outputs/apk/release/app-release.apk"
+        # Buscar el APK en diferentes ubicaciones posibles
+        APK_PATH=$(find . -name "*release*.apk" -type f | head -1)
         if [ -f "$APK_PATH" ]; then
-          echo "✅ APK creado exitosamente"
-          ls -la app/build/outputs/apk/release/
+          echo "✅ APK creado exitosamente: $APK_PATH"
+          ls -la $(dirname "$APK_PATH")
         else
           echo "❌ No se encontró el APK. Buscando en todo el proyecto:"
           find . -name "*.apk" -type f
           exit 1
         fi
 
-    # 8️⃣ Subir APK como artefacto
+    # 9️⃣ Subir APK como artefacto
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
