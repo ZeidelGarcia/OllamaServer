@@ -51,8 +51,9 @@ jobs:
 
     # 6️⃣ Construir APK de release USANDO GRADLE INSTALADO
     - name: Build Release APK
-      run: |
-        gradle assembleRelease \
+      run: | 
+        cd app/
+          ../gradle assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
