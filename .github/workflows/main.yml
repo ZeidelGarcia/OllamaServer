@@ -13,8 +13,6 @@ jobs:
     # 1️⃣ Clonar el repositorio
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # 🔥 Clona todo el historial, necesario para gradle wrapper
 
     # 2️⃣ Configurar JDK 17
     - name: Setup JDK
@@ -24,22 +22,12 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # 3️⃣ Generar gradlew si no existe
-    - name: Generate Gradle Wrapper
+    # 3️⃣ Instalar Gradle (SOLUCIÓN SIMPLE)
+    - name: Install Gradle
       run: |
-        if [ ! -f "./gradlew" ]; then
-          echo "📦 Generando gradlew..."
-          ./gradle wrapper --gradle-version=8.4 --distribution-type=bin
-          # Si no hay gradle instalado, usamos una alternativa
-          if [ ! -f "./gradlew" ]; then
-            gradle wrapper --gradle-version=8.4 --distribution-type=bin
-          fi
-        fi
-        
-        # Asegurar que gradlew tenga permisos de ejecución
-        chmod +x ./gradlew
-        echo "✅ gradlew listo"
-        ls -la gradlew
+        sudo apt-get update
+        sudo apt-get install -y gradle
+        gradle --version
 
     # 4️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
@@ -61,40 +49,29 @@ jobs:
         echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
         echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-    # 6️⃣ Preparar gradlew (ahora seguro que existe)
-    - name: Prepare gradlew
-      run: |
-        chmod +x ./gradlew
-        # Convertir a line endings LF (Linux)
-        sudo apt-get update && sudo apt-get install -y dos2unix
-        dos2unix ./gradlew
-        echo "✅ gradlew preparado"
-        ./gradlew --version
-
-    # 7️⃣ Construir APK de release
+    # 6️⃣ Construir APK de release USANDO GRADLE INSTALADO
     - name: Build Release APK
       run: |
-        ./gradlew assembleRelease \
+        gradle assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
           -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
-    # 8️⃣ Verificar APK generado
+    # 7️⃣ Verificar APK generado
     - name: Verify APK was built
       run: |
-        # Buscar el APK en diferentes ubicaciones posibles
-        APK_PATH=$(find . -name "*release*.apk" -type f | head -1)
+        APK_PATH="app/build/outputs/apk/release/app-release.apk"
         if [ -f "$APK_PATH" ]; then
-          echo "✅ APK creado exitosamente: $APK_PATH"
-          ls -la $(dirname "$APK_PATH")
+          echo "✅ APK creado exitosamente"
+          ls -la app/build/outputs/apk/release/
         else
           echo "❌ No se encontró el APK. Buscando en todo el proyecto:"
           find . -name "*.apk" -type f
           exit 1
         fi
 
-    # 9️⃣ Subir APK como artefacto
+    # 8️⃣ Subir APK como artefacto
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
