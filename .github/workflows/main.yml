@@ -22,12 +22,15 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # 3️⃣ Usar Gradle Wrapper en lugar de instalar Gradle antiguo
-    - name: Setup Gradle Wrapper
+  # En lugar de instalar Gradle antiguo, instala una versión moderna
+    - name: Install Modern Gradle
       run: |
-        cd app/
-        chmod +x gradlew
-        ./gradlew --version
+        # Instalar Gradle 8.x (compatible con Android)
+        wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
+        sudo unzip -d /opt/gradle gradle-8.7-bin.zip
+        echo "GRADLE_HOME=/opt/gradle/gradle-8.7" >> $GITHUB_ENV
+        echo "$/opt/gradle/gradle-8.7/bin:$PATH" >> $GITHUB_ENV
+        gradle --version
 
     # 4️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
@@ -49,11 +52,11 @@ jobs:
         echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
         echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-    # 6️⃣ Construir APK usando Gradle Wrapper
+    # 6️⃣ Construir APK de release USANDO GRADLE INSTALADO
     - name: Build Release APK
       run: | 
         cd app/
-        ./gradlew assembleRelease \
+          ./gradle assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
