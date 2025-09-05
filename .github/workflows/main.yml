@@ -10,30 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1️⃣ Clonar el repositorio
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # 2️⃣ Configurar JDK 17
     - name: Setup JDK
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
-
+    # 3️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ollama-release.keystore
-        # Verificar que el keystore se creó correctamente
         if [ -f "ollama-release.keystore" ]; then
-          echo "Keystore creado exitosamente"
+          echo "✅ Keystore creado exitosamente"
           ls -la ollama-release.keystore
         else
-          echo "ERROR: No se pudo crear el keystore"
+          echo "❌ ERROR: No se pudo crear el keystore"
           exit 1
         fi
 
+    # 4️⃣ Configurar variables de entorno
     - name: Set environment variables
       run: |
         echo "KEYSTORE_FILE=$PWD/ollama-release.keystore" >> $GITHUB_ENV
@@ -41,18 +41,22 @@ jobs:
         echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
         echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-    - name: Verify project structure
+    # 5️⃣ Preparar gradlew: permisos + line endings
+    - name: Prepare gradlew
       run: |
-        echo "Estructura del proyecto:"
-        ls -la
-        echo "¿gradlew existe?:"
-        if [ -f "./gradlew" ]; then
-          echo "✅ gradlew encontrado"
-        else
-          echo "❌ gradlew NO encontrado"
+        if [ ! -f "./gradlew" ]; then
+          echo "❌ gradlew no encontrado en la raíz del repo"
+          ls -la
           exit 1
         fi
+        chmod +x ./gradlew
+        # Convertir a line endings LF (Linux)
+        sudo apt-get update && sudo apt-get install -y dos2unix
+        dos2unix ./gradlew
+        echo "✅ gradlew listo"
+        ./gradlew --version
 
+    # 6️⃣ Construir APK de release
     - name: Build Release APK
       run: |
         ./gradlew assembleRelease \
@@ -61,17 +65,20 @@ jobs:
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
           -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
+    # 7️⃣ Verificar APK generado
     - name: Verify APK was built
       run: |
-        if [ -f "app/build/outputs/apk/release/OllamaServer.apk" ]; then
+        APK_PATH="app/build/outputs/apk/release/OllamaServer.apk"
+        if [ -f "$APK_PATH" ]; then
           echo "✅ APK creado exitosamente"
           ls -la app/build/outputs/apk/release/
         else
-          echo "❌ No se encontró el APK. Buscando en:"
+          echo "❌ No se encontró el APK. Buscando en todo el proyecto:"
           find . -name "*.apk" -type f
           exit 1
         fi
 
+    # 8️⃣ Subir APK como artefacto
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
