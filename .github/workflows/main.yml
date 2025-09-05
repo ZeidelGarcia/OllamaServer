@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup JDK
       uses: actions/setup-java@v3
@@ -43,7 +43,7 @@ jobs:
                                       -Pandroid.injected.signing.key.password=$KEY_PASSWORD
 
     - name: Upload Release APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: Ollama-Server-apk
-        path: app/build/outputs/apk/release/app-release.apk
+        name: Ollama-Server
+        path: app/build/outputs/apk/release/OllamaServer.apk
