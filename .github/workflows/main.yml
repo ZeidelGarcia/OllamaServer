@@ -22,12 +22,12 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    # 3️⃣ Instalar Gradle (SOLUCIÓN SIMPLE)
-    - name: Install Gradle
+    # 3️⃣ Usar Gradle Wrapper en lugar de instalar Gradle antiguo
+    - name: Setup Gradle Wrapper
       run: |
-        sudo apt-get update
-        sudo apt-get install -y gradle
-        gradle --version
+        cd app/
+        chmod +x gradlew
+        ./gradlew --version
 
     # 4️⃣ Restaurar keystore desde secreto
     - name: Restore Keystore
@@ -49,11 +49,11 @@ jobs:
         echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
         echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
-    # 6️⃣ Construir APK de release USANDO GRADLE INSTALADO
+    # 6️⃣ Construir APK usando Gradle Wrapper
     - name: Build Release APK
       run: | 
         cd app/
-          gradle assembleRelease \
+        ./gradlew assembleRelease \
           -Pandroid.injected.signing.store.file="$KEYSTORE_FILE" \
           -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
           -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
