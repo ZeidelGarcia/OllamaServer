@@ -1,23 +1,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
+    android:layout_height="match_parent"
+    android:id="@+id/panelMonitor"
+    android:background="#222222"
+    android:padding="8dp">
     <FrameLayout
         android:id="@+id/terminalContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.7"/>
-<!-- ERROR: Falta xmlns:android -->
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/panelMonitor"
-        android:orientation="vertical"
-        android:background="#222222"
-        android:padding="8dp">
-
     <TextView
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
             android:id="@+id/monitorText"
