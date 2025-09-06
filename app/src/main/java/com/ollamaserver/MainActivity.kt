@@ -117,14 +117,22 @@ class MainActivity : AppCompatActivity() {
     private fun connectTerminalToService() {
         val fragment = supportFragmentManager.findFragmentById(R.id.terminalContainer)
         if (fragment is TerminalFragment) {
-            // El fragmento ya tiene acceso al ViewModel compartido
+            // Configurar comunicación bidireccional real
             viewModel.updateServiceStatus("Servicio conectado al terminal")
+        
+            // Enviar comando de conexión al servicio
+            val connectIntent = Intent(this, OllamaService::class.java).apply {
+                action = "TERMINAL_CONNECT"
+                putExtra("TERMINAL_ACTIVE", true)
+            }
+            startService(connectIntent)
+        
             Toast.makeText(this, "Terminal conectado al servicio ✅", Toast.LENGTH_SHORT).show()
         } else {
-            // Intentar de nuevo después de un breve delay
+            // Reintentar después de un delay
             Handler(Looper.getMainLooper()).postDelayed({
                 connectTerminalToService()
-            }, 100)
+            }, 300)
         }
     }
 

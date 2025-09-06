@@ -1,6 +1,7 @@
 package com.ollamaserver
 
-iimport android.os.Environmentmport android.content.Context
+import android.os.Environment
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -104,7 +105,7 @@ object OllamaDataRepository {
     // Método para verificar si se concedió el permiso MANAGE_EXTERNAL_STORAGE
     fun hasManageExternalStoragePermission(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Settings.isManageExternalStorageAllowed()
+            Environment.isManageExternalStorageAllowed()
         } else {
             true // En versiones anteriores no se necesita este permiso
         }

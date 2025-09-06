@@ -1,6 +1,8 @@
 package com.ollamaserver
 
 import android.graphics.Typeface
+import androidx.lifecycle.Observer
+import androidx.lifecycle.observe
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.view.LayoutInflater
