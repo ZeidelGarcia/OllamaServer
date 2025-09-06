@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+    <string name="app_name">Ollama Server</string>
+    <string name="select_folder_title">Seleccionar carpeta Ollama</string>
+    <string name="select_folder_message">Selecciona la carpeta donde están los modelos de Ollama</string>
+    <string name="select">Seleccionar</string>
+    <string name="exit">Salir</string>
+    <string name="server_started">Servidor iniciado</string>
 </resources>

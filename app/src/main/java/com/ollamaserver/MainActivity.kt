@@ -1,55 +1,74 @@
 package com.ollamaserver
 
-import android.app.AlertDialog
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.commit
+import androidx.lifecycle.Observer
 
 class MainActivity : AppCompatActivity() {
 
-    private val storagePermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions.all { it.value }) {
-            // Permisos concedidos, ahora lanzar el selector de carpeta
-            launchFolderPicker()
+    private var ollamaRootUri: Uri? = null
+    private val viewModel: OllamaViewModel by viewModels()
+
+    private val PREFS_NAME = "OllamaPrefs"
+    private val KEY_OLLAMA_URI = "ollama_root_uri"
+
+    // Selector de carpeta raíz
+    private val folderPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.data
+            if (uri != null) {
+                try {
+                    // Guardar permiso persistente
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+
+                    ollamaRootUri = uri
+                    saveOllamaUri(uri)
+
+                    val folder = DocumentFile.fromTreeUri(this, uri)
+                    if (folder != null && folder.canRead()) {
+                        startOllamaService()
+                        showInfoDialog(folder.uri.toString())
+                        loadTerminalFragment()
+                    } else {
+                        Toast.makeText(this, "Error al acceder a la carpeta ❌", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Error al guardar permisos: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         } else {
-            // Permisos denegados
-            Toast.makeText(this, "Se necesitan permisos de almacenamiento para funcionar", Toast.LENGTH_LONG).show()
-            finish()
+            Toast.makeText(this, "No seleccionaste ninguna carpeta ⚠️", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        uri?.let {
-            // Tomar control persistente de la URI
-            contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            )
-            
-            val file = DocumentFile.fromTreeUri(this, uri)
-            file?.findFile(".ollama") ?: file?.createDirectory(".ollama")
-            val modelPath = file?.uri.toString() + "/.ollama"
-            getSharedPreferences("config", MODE_PRIVATE).edit()
-                .putString("ollama_dir", modelPath)
-                .apply()
-            startOllamaService()
-            showInfoDialog(modelPath)
-        } ?: run {
-            // Usuario canceló la selección
-            Toast.makeText(this, "Debes seleccionar una carpeta para continuar", Toast.LENGTH_SHORT).show()
-            finish()
+    // Permisos de notificación
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            Toast.makeText(this, "Las notificaciones son necesarias", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -57,62 +76,120 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Primero verificar y solicitar permisos básicos
-        checkAndRequestPermissions()
-    }
+        // Bloquear rotación (solo vertical)
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-    private fun checkAndRequestPermissions() {
-        val permissionsToRequest = mutableListOf<String>()
+        // Verificar permisos de notificación
+        checkNotificationPermission()
 
-        // Verificar permisos básicos de almacenamiento
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) 
-            != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
+        // Crear canal de notificaciones
+        createNotificationChannel()
 
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) 
-            != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
+        // Observar cambios en el estado del servicio
+        viewModel.serviceStatus.observe(this, Observer { status ->
+            status?.let {
+                // Aquí puedes actualizar la UI con el estado del servicio
+                Toast.makeText(this, "Estado del servicio: $it", Toast.LENGTH_SHORT).show()
+            }
+        })
 
-        if (permissionsToRequest.isNotEmpty()) {
-            // Solicitar permisos básicos primero
-            storagePermissionLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            // Ya tiene permisos, verificar si ya seleccionó carpeta
-            checkExistingFolder()
-        }
-    }
-
-    private fun checkExistingFolder() {
-        val prefs = getSharedPreferences("config", MODE_PRIVATE)
-        val dir = prefs.getString("ollama_dir", null)
-        if (dir == null) {
-            launchFolderPicker()
-        } else {
-            // Verificar que aún tenemos acceso a la URI
+        // Cargar carpeta guardada si existe
+        val savedUri = loadOllamaUri()
+        if (savedUri != null) {
             try {
-                Uri.parse(dir)?.let { uri ->
-                    contentResolver.query(uri, null, null, null, null)?.close()
-                }
+                contentResolver.query(savedUri, null, null, null, null)?.close()
+                ollamaRootUri = savedUri
                 startOllamaService()
-                showInfoDialog(dir)
+                showInfoDialog(savedUri.toString())
                 loadTerminalFragment()
             } catch (e: Exception) {
-                // Perdimos acceso, pedir nueva carpeta
-                getSharedPreferences("config", MODE_PRIVATE).edit().remove("ollama_dir").apply()
-                launchFolderPicker()
+                showOllamaFolderDialog()
+            }
+        } else {
+            showOllamaFolderDialog()
+        }
+    }
+
+    // Función para conectar con TerminalFragment usando ViewModel
+    private fun connectTerminalToService() {
+        val fragment = supportFragmentManager.findFragmentById(R.id.terminalContainer)
+        if (fragment is TerminalFragment) {
+            // El fragmento ya tiene acceso al ViewModel compartido
+            viewModel.updateServiceStatus("Servicio conectado al terminal")
+            Toast.makeText(this, "Terminal conectado al servicio ✅", Toast.LENGTH_SHORT).show()
+        } else {
+            // Intentar de nuevo después de un breve delay
+            Handler(Looper.getMainLooper()).postDelayed({
+                connectTerminalToService()
+            }, 100)
+        }
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, 
+                android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
 
-    private fun launchFolderPicker() {
-        // Lanzar el selector de árbol de documentos de SAF
-        folderPicker.launch(null)
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                "ollama_channel",
+                "Ollama Service",
+                android.app.NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(android.app.NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
     }
 
+    // Dialogo inicial para elegir carpeta
+    private fun showOllamaFolderDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Seleccionar carpeta raíz de Ollama")
+            .setMessage("Por favor selecciona la carpeta donde está instalado Ollama para que la app funcione correctamente.")
+            .setCancelable(false)
+            .setPositiveButton("Seleccionar") { _, _ ->
+                openFolderPicker()
+            }
+            .setNegativeButton("Salir") { _, _ ->
+                finish()
+            }
+            .show()
+    }
+
+    private fun openFolderPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        )
+        folderPickerLauncher.launch(intent)
+    }
+
+    // Guardar URI en SharedPreferences
+    private fun saveOllamaUri(uri: Uri) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_OLLAMA_URI, uri.toString()).apply()
+    }
+
+    // Cargar URI guardada
+    private fun loadOllamaUri(): Uri? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val uriString = prefs.getString(KEY_OLLAMA_URI, null)
+        return uriString?.let { Uri.parse(it) }
+    }
+
+    // Arrancar el servicio de Ollama
     private fun startOllamaService() {
-        val intent = Intent(this, OllamaService::class.java).apply { action = "START" }
+        val intent = Intent(this, OllamaService::class.java).apply { 
+            action = "START"
+            // Solo la acción, sin pasar datos del ViewModel
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
@@ -120,24 +197,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Mostrar popup de servidor iniciado
     private fun showInfoDialog(dir: String) {
         AlertDialog.Builder(this)
             .setTitle("Servidor iniciado")
             .setMessage("Ollama corriendo en http://localhost:11434\nCarpeta de modelos: $dir")
-            .setPositiveButton("OK") { _, _ -> 
+            .setPositiveButton("OK") { _, _ ->
                 loadTerminalFragment()
+                // Conectar después de un pequeño delay para asegurar que el fragmento esté creado
+                Handler(Looper.getMainLooper()).postDelayed({
+                    connectTerminalToService()
+                }, 300)
             }
             .setCancelable(false)
             .show()
     }
 
+    // Cargar fragmento de terminal
     private fun loadTerminalFragment() {
         supportFragmentManager.commit {
             replace(R.id.terminalContainer, TerminalFragment())
         }
     }
 
-    // Para Android 11+ si necesitas acceso completo (opcional)
+    // Extra: acceso total a archivos Android 11+
     private fun requestAllFilesAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -145,5 +228,14 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Detener servicio cuando la actividad se destruye
+        val stopIntent = Intent(this, OllamaService::class.java).apply {
+            action = "STOP"
+        }
+        startService(stopIntent)
     }
 }
