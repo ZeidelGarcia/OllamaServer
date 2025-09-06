@@ -1,6 +1,6 @@
 package com.ollamaserver
 
-import android.content.Context
+iimport android.os.Environmentmport android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build

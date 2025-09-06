@@ -231,7 +231,7 @@ class OllamaService : Service() {
         val restartPending = PendingIntent.getService(this, 1, restartIntent, PendingIntent.FLAG_IMMUTABLE)
 
         // Obtener estadísticas actuales para mostrar en la notificación
-        val stats = OllamaDataRepository.currentStats.value ?: OllamaDataRepository.ServerStats()
+        val stats = OllamaDataRepository.serverStats.value ?: OllamaDataRepository.ServerStats()
         
         // Crear la notificación con los iconos
         val notification = NotificationCompat.Builder(this, "ollama_channel")

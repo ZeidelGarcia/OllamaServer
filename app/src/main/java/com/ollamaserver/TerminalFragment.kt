@@ -51,9 +51,9 @@ class TerminalFragment : Fragment() {
         })
 
         // Observar errores
-        viewModel.errorMessage.observe(viewLifecycleOwner, Observer { error ->
-            error?.let {
-                terminalView.append("❌ ERROR: $it\n")
+        viewModel.errorMessage.observe(viewLifecycleOwner, Observer<String?> { error ->
+            error?.let { err ->
+                terminalView.append("❌ ERROR: $err\n")
                 scrollToBottom()
             }
         })

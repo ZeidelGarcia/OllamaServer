@@ -84,7 +84,7 @@ class SystemMonitor(private val context: Context) {
                 activityManager.getMemoryInfo(memoryInfo)
                 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    formatBytes(memoryInfo.totalSwap)
+                    getSwapUsageLegacy()
                 } else {
                     // Método alternativo para versiones anteriores
                     getSwapUsageLegacy()
