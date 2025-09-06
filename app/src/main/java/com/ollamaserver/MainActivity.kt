@@ -1,6 +1,8 @@
 package com.ollamaserver
 
 import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -68,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            Toast.makeText(this, "Las notificaciones son necesarias", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Las notificaciones son necesarias para el servicio en primer plano", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -79,11 +81,11 @@ class MainActivity : AppCompatActivity() {
         // Bloquear rotación (solo vertical)
         requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
+        // Crear canal de notificaciones (debe hacerse antes de verificar permisos)
+        createNotificationChannel()
+
         // Verificar permisos de notificación
         checkNotificationPermission()
-
-        // Crear canal de notificaciones
-        createNotificationChannel()
 
         // Observar cambios en el estado del servicio
         viewModel.serviceStatus.observe(this, Observer { status ->
@@ -136,13 +138,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(
-                "ollama_channel",
-                "Ollama Service",
-                android.app.NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(android.app.NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            val channelId = "ollama_channel"
+            val channelName = "Ollama Service"
+            val importance = NotificationManager.IMPORTANCE_LOW
+            
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "Canal para las notificaciones del servicio Ollama"
+                setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
@@ -188,8 +195,11 @@ class MainActivity : AppCompatActivity() {
     private fun startOllamaService() {
         val intent = Intent(this, OllamaService::class.java).apply { 
             action = "START"
-            // Solo la acción, sin pasar datos del ViewModel
         }
+        
+        // Configurar el intent del servicio en el Repository para comunicación
+        OllamaDataRepository.setServiceIntent(intent)
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
