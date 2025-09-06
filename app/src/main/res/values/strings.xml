@@ -1,11 +1,12 @@
 <resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
     <string name="app_name">Ollama Server</string>
     <string name="select_folder_title">Seleccionar carpeta Ollama</string>
     <string name="select_folder_message">selecciona la carpeta raiz Ollama.</string>
     <string name="select">Seleccionar</string>
     <string name="exit">Salir</string>
     <string name="server_started">Servidor iniciado</string>
-  <string name="server_started_message">Ollama corriendo en http://localhost:11434</string>
+    <string name="server_started_message">Ollama corriendo en http://localhost:11434</string>
     <string name="folder_access_error">Error al acceder a la carpeta</string>
     <string name="no_folder_selected">No seleccionaste ninguna carpeta ⚠️</string>
 </resources>
