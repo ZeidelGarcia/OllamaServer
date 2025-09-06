@@ -9,9 +9,8 @@
     <!-- Permisos de almacenamiento para versiones anteriores a Android 11 -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
-    
-    <!-- Para Android 11+ si necesitas acceso total a archivos -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />   
 
     <application
         android:allowBackup="true"
@@ -43,9 +42,5 @@
             android:enabled="true"
             android:exported="false"/>
             
-        <!-- Canal de notificaciones para Android 8.0+ -->
-        <meta-data
-            android:name="com.ollamaserver.notification_channel_ollama"
-            android:value="ollama_channel" />
     </application>
 </manifest>
