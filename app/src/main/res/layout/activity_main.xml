@@ -18,5 +18,4 @@
             android:textColor="#00FF00"
             android:fontFamily="monospace"
             android:textSize="12sp"/>
-    </LinearLayout>
 </LinearLayout>
