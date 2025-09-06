@@ -38,14 +38,8 @@ jobs:
             # Descargar gradle-wrapper.jar
             wget -O gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar
 
-            # Crear gradle-wrapper.properties (CORREGIDO)
-            cat > gradle/wrapper/gradle-wrapper.properties <<'EOF'
-            distributionBase=GRADLE_USER_HOME
-            distributionPath=wrapper/dists
-            distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
-            zipStoreBase=GRADLE_USER_HOME
-            zipStorePath=wrapper/dists 
-            EOF
+            # Crear gradle-wrapper.properties sin EOF
+            run: 'printf "distributionBase=GRADLE_USER_HOME\ndistributionPath=wrapper/dists\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip\nzipStoreBase=GRADLE_USER_HOME\nzipStorePath=wrapper/dists\n" > gradle/wrapper/gradle-wrapper.properties'
 
             echo "✅ Gradle Wrapper generado automáticamente"
           else
