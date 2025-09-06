@@ -22,7 +22,7 @@ jobs:
           java-version: "17"
           cache: "gradle"
 
-      # 3️⃣ Verificar gradlew o generarlo
+      # 3️⃣ Verificar gradlew o generarlo (CORREGIDO)
       - name: Check Gradle Wrapper
         run: |
           if [ ! -f "./gradlew" ]; then
@@ -38,14 +38,14 @@ jobs:
             # Descargar gradle-wrapper.jar
             wget -O gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar
 
-            # Crear gradle-wrapper.properties
-            cat > gradle/wrapper/gradle-wr, mejorasapper.properties <<- 'EOF'
-            distributionBase=GRADLE_USER_HOME
-            distributionPath=wrapper/dists
-            distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip
-            zipStoreBase=GRADLE_USER_HOME
-            zipStorePath=wrapper/dists 
-          EOF
+            # Crear gradle-wrapper.properties (CORREGIDO)
+            cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists 
+EOF
 
             echo "✅ Gradle Wrapper generado automáticamente"
           else
@@ -53,7 +53,7 @@ jobs:
             chmod +x ./gradlew
           fi
 
-      # 5️⃣ Restaurar keystore desde secreto
+      # 4️⃣ Restaurar keystore desde secreto
       - name: Restore Keystore
         run: |
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
@@ -71,7 +71,7 @@ jobs:
             echo "✅ Keystore temporal generado para testing"
           fi
 
-      # 6️⃣ Configurar variables de entorno
+      # 5️⃣ Configurar variables de entorno
       - name: Set environment variables
         run: |
           if [ -f "ollama-release.keystore" ]; then
@@ -89,7 +89,7 @@ jobs:
           echo "KEYSTORE_FILE: $KEYSTORE_FILE"
           echo "KEY_ALIAS: $KEY_ALIAS"
 
-      # 7️⃣ Construir APK
+      # 6️⃣ Construir APK
       - name: Build Release APK
         run: |
           ./gradlew assembleRelease \
@@ -98,7 +98,7 @@ jobs:
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
-      # 8️⃣ Verificar APK
+      # 7️⃣ Verificar APK
       - name: Verify APK was built
         run: |
           APK_PATH="app/build/outputs/apk/release/Ollama-Server.apk"
@@ -115,7 +115,7 @@ jobs:
             exit 1
           fi
 
-      # 9️⃣ Subir APK como artefacto
+      # 8️⃣ Subir APK como artefacto
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
